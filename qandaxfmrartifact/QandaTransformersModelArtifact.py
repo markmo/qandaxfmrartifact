@@ -1,8 +1,6 @@
 import os
 from importlib import import_module
 
-import tensorflow as tf
-import tensorflow_hub as hub
 from bentoml.exceptions import (
     InvalidArgument,
     MissingDependencyException,
@@ -92,7 +90,7 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
     def _file_path(self, base_path):
         return os.path.join(base_path, self.name)
 
-    def _load_from_directory(self, path, opts):
+    def _load_from_directory(self, path):
         if self._model_type is None:
             raise NotFound(
                 "Type of transformers model not found. "
@@ -107,11 +105,6 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
                 "in the artifacts of the bundle."
             )
 
-        if 'embedder_model_path' not in opts:
-            raise NotFound(
-                "Path to embedder model should be in opts. "
-            )
-
         transformers_model = \
             getattr(import_module('transformers'), self._model_type) \
             .from_pretrained(path)
@@ -119,10 +112,8 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
         tokenizer = \
             getattr(import_module('transformers'), self._tokenizer_type) \
             .from_pretrained(path)
-        
-        embedder = hub.load(opts['embedder_model_path'])
 
-        self._model = {'model': transformers_model, 'tokenizer': tokenizer, 'embedder': embedder}
+        self._model = {'model': transformers_model, 'tokenizer': tokenizer}
 
     def _load_from_dict(self, model):
         if not model.get('model'):
@@ -134,12 +125,6 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
         if not model.get('tokenizer'):
             raise InvalidArgument(
                 "'tokenizer' key is not found in the dictionary. "
-                "Expecting a dictionary with keys 'model', 'tokenizer' and 'embedder'"
-            )
-
-        if not model.get('embedder'):
-            raise InvalidArgument(
-                "'embedder' key is not found in the dictionary. "
                 "Expecting a dictionary with keys 'model', 'tokenizer' and 'embedder'"
             )
 
@@ -160,12 +145,7 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
 
         self._model = model
 
-    def _load_from_string(self, model_name, opts):
-        if 'embedder_model_path' not in opts:
-            raise NotFound(
-                "Path to embedder model should be in opts. "
-            )
-
+    def _load_from_string(self, model_name):
         try:
             transformers_model = \
                 getattr(import_module('transformers'), self._model_type) \
@@ -173,9 +153,7 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
 
             tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
 
-            embedder = hub.load(opts['embedder_model_path'])
-
-            self._model = {'model': transformers_model, 'tokenizer': tokenizer, 'embedder': embedder}
+            self._model = {'model': transformers_model, 'tokenizer': tokenizer}
 
         except EnvironmentError:
             raise NotFound(
@@ -188,19 +166,12 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
                 "called {}".format(self._model_type)
             )
 
-    def _save_package_opts(self, path, opts):
-        with open(os.path.join(path, 'package_opts.json'), 'w') as f:
-            json.dump(opts, f)
-
-    def pack(self, model, opts=None):
-        if opts is None:
-            opts = {}
-
+    def pack(self, model):
         if isinstance(model, str):
             if os.path.isdir(model):
-                self._load_from_directory(model, opts)
+                self._load_from_directory(model)
             else:
-                self._load_from_string(model, opts)
+                self._load_from_string(model)
         elif isinstance(model, dict):
             self._load_from_dict(model)
         else:
@@ -209,14 +180,10 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
                 "{'model': <transformers model object>, 'tokenizer': <tokenizer object>}"
             )
 
-        self._save_package_opts(model, opts)
         return self
 
     def load(self, path):
         path = self._file_path(path)
-
-        with open(os.path.join(path, 'package_opts.json'), 'r') as f:
-            opts = json.load(f)
 
         with open(os.path.join(path, '_model_type.txt'), 'r') as f:
             self._model_type = f.read().strip()
@@ -224,7 +191,7 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
         with open(os.path.join(path, 'tokenizer_type.txt'), 'r') as f:
             self._tokenizer_type = f.read().strip()
 
-        return self.pack(path, opts)
+        return self.pack(path)
 
     def _save_model_type(self, path):
         with open(os.path.join(path, '_model_type.txt'), 'w') as f:
@@ -240,7 +207,6 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
         self._tokenizer_type = self._model.get('tokenizer').__class__.__name__
         self._model.get('model').save_pretrained(path)
         self._model.get('tokenizer').save_pretrained(path)
-        tf.saved_model.save(self._model.get('embedder'), path)
         self._save_model_type(path)
         return path
 

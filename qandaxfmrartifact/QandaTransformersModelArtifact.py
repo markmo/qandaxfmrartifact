@@ -168,12 +168,20 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
 
     def pack(self, model):
         if isinstance(model, str):
+            with open(os.path.join(model, '_model_type.txt'), 'r') as f:
+                self._model_type = f.read().strip()
+
+            with open(os.path.join(model, 'tokenizer_type.txt'), 'r') as f:
+                self._tokenizer_type = f.read().strip()
+
             if os.path.isdir(model):
                 self._load_from_directory(model)
             else:
                 self._load_from_string(model)
+
         elif isinstance(model, dict):
             self._load_from_dict(model)
+
         else:
             raise InvalidArgument(
                 "Expecting a Dictionary of format "
@@ -184,13 +192,6 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
 
     def load(self, path):
         path = self._file_path(path)
-
-        with open(os.path.join(path, '_model_type.txt'), 'r') as f:
-            self._model_type = f.read().strip()
-
-        with open(os.path.join(path, 'tokenizer_type.txt'), 'r') as f:
-            self._tokenizer_type = f.read().strip()
-
         return self.pack(path)
 
     def _save_model_type(self, path):

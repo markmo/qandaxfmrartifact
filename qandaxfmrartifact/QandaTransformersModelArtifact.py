@@ -166,7 +166,7 @@ class QandaTransformersModelArtifact(BentoServiceArtifact):
                 "called {}".format(self._model_type)
             )
 
-    def pack(self, model):
+    def pack(self, model, opts=None, update=False):
         if isinstance(model, str):
             with open(os.path.join(model, '_model_type.txt'), 'r') as f:
                 self._model_type = f.read().strip()

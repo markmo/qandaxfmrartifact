@@ -4,7 +4,7 @@ BentoML artifact framework for Q&A Transformers.
 
 Installation:
 
-    pip install qandaxfmrartifact==0.0.1
+    pip install qandaxfmrartifact
 
 Usage example (decorate service):
 

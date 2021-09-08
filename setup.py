@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name='qandaxfmrartifact',
-    version='0.0.9',
+    version='0.0.10',
     author='Mark Moloney',
     author_email='m4rkmo@gmail.com',
     description='BentoML artifact framework for Q&A Transformers',
